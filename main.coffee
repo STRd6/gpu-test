@@ -1,5 +1,7 @@
 webGLStart = -> 
   canvas = document.createElement("canvas")
+  document.body.appendChild(canvas)
+
   gl = getGL(canvas)
 
   fragmentShader = compileShader(gl, require("./shaders/fragment"), gl.FRAGMENT_SHADER)
@@ -11,7 +13,7 @@ webGLStart = ->
   gl.clearColor(0.0, 0.0, 0.0, 1.0)
   gl.enable(gl.DEPTH_TEST)
 
-  drawScene(gl, program)
+  drawScene(gl, program, vertexPositionBuffer)
 
 getGL = (canvas) ->
   try
@@ -87,10 +89,11 @@ drawScene = (gl, program, vertexPositionBuffer) ->
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer)
   gl.vertexAttribPointer(aVertexPosition, vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
-  plotPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, plotPositionBuffer);
+  plotPositionBuffer = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, plotPositionBuffer)
 
-  corners = baseCorners.map ([x, y]) ->
+  corners = []
+  baseCorners.forEach ([x, y]) ->
     corners.push(x / zoom + centerOffsetX)
     corners.push(y / zoom + centerOffsetY)
 
