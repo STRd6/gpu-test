@@ -1,4 +1,4 @@
-{mat4} = glMatrix = require "./lib/gl-matrix.min"
+{mat4} = glMatrix = require "./lib/gl-matrix"
 console.log glMatrix
 
 webGLStart = -> 
@@ -111,13 +111,13 @@ drawScene = (gl, program, triangleVertexPositionBuffer, squareVertexPositionBuff
   mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix)
   mat4.identity(mvMatrix)
 
-  mat4.translate(mvMatrix, [-1.5, 0.0, -7.0])
+  mat4.translate(mvMatrix, mvMatrix, [-1.5, 0.0, -7.0])
   gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer)
   gl.vertexAttribPointer(program.vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
   setMatrixUniforms()
   gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems)
-  
-  mat4.translate(mvMatrix, [3.0, 0.0, 0.0])
+
+  mat4.translate(mvMatrix, mvMatrix, [3.0, 0.0, 0.0])
   gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer)
   gl.vertexAttribPointer(program.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
   setMatrixUniforms()
