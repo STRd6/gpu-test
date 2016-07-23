@@ -1,5 +1,9 @@
+{mat4} = glMatrix = require "./lib/gl-matrix.min"
+console.log glMatrix
+
 webGLStart = -> 
   canvas = document.createElement("canvas")
+  canvas.width = canvas.height = 500
   document.body.appendChild(canvas)
 
   gl = getGL(canvas)
@@ -8,12 +12,21 @@ webGLStart = ->
   vertexShader = compileShader(gl, require("./shaders/vertex"), gl.VERTEX_SHADER)
 
   program = createProgram(gl, vertexShader, fragmentShader)
-  vertexPositionBuffer = createBuffer(gl)
+  addLocationsToProgram(gl, program)
+  
+  triangleBuffer = createTriangleBuffer(gl)
+  squareBuffer = createSquareBuffer(gl)
+  
+  pMatrix = mat4.create()
+  mvMatrix = mat4.create()
+  
+  gl.uniformMatrix4fv(program.pMatrixUniform, false, pMatrix)
+  gl.uniformMatrix4fv(program.mvMatrixUniform, false, mvMatrix)
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0)
   gl.enable(gl.DEPTH_TEST)
 
-  drawScene(gl, program, vertexPositionBuffer)
+  drawScene(gl, program, triangleBuffer, squareBuffer, pMatrix, mvMatrix)
 
 getGL = (canvas) ->
   try
@@ -50,56 +63,65 @@ createProgram = (gl, vertexShader, fragmentShader) ->
 
   return shaderProgram
 
-createBuffer = (gl) ->
-  vertexPositionBuffer = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer)
+addLocationsToProgram = (gl, program) ->
+  program.vertexPositionAttribute = gl.getAttribLocation(program, "aVertexPosition")
+  gl.enableVertexAttribArray(program.vertexPositionAttribute)
+
+  program.pMatrixUniform = gl.getUniformLocation(program, "uPMatrix")
+  program.mvMatrixUniform = gl.getUniformLocation(program, "uMVMatrix")
+
+  return program
+
+createTriangleBuffer = (gl) ->
+  triangleVertexPositionBuffer = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer)
+
   vertices = [
-       1.0,  1.0
-      -1.0,  1.0
-       1.0, -1.0
-      -1.0, -1.0
+       0.0,  1.0,  0.0
+      -1.0, -1.0,  0.0
+       1.0, -1.0,  0.0
   ]
-
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
-  vertexPositionBuffer.itemSize = 2
-  vertexPositionBuffer.numItems = 4
 
-  return vertexPositionBuffer
+  triangleVertexPositionBuffer.itemSize = 3
+  triangleVertexPositionBuffer.numItems = 3
 
-baseCorners = [
-  [ 0.7,  1.2]
-  [-2.2,  1.2]
-  [ 0.7, -1.2]
-  [-2.2, -1.2]
-]
+  return triangleVertexPositionBuffer
 
-zoom = 1
-centerOffsetX = 0
-centerOffsetY = 0
+createSquareBuffer = (gl) ->
+  squareVertexPositionBuffer = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer)
+  vertices = [
+       1.0,  1.0,  0.0
+      -1.0,  1.0,  0.0
+       1.0, -1.0,  0.0
+      -1.0, -1.0,  0.0
+  ]
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
 
-drawScene = (gl, program, vertexPositionBuffer) ->
-  aVertexPosition = gl.getAttribLocation(program, "aVertexPosition")
-  gl.enableVertexAttribArray(aVertexPosition)
+  squareVertexPositionBuffer.itemSize = 3
+  squareVertexPositionBuffer.numItems = 4
 
-  aPlotPosition = gl.getAttribLocation(program, "aPlotPosition")
-  gl.enableVertexAttribArray(aPlotPosition)
+  return squareVertexPositionBuffer
 
+drawScene = (gl, program, triangleVertexPositionBuffer, squareVertexPositionBuffer, pMatrix, mvMatrix) ->
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight)
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer)
-  gl.vertexAttribPointer(aVertexPosition, vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
-  plotPositionBuffer = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, plotPositionBuffer)
+  mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix)
+  mat4.identity(mvMatrix)
 
-  corners = []
-  baseCorners.forEach ([x, y]) ->
-    corners.push(x / zoom + centerOffsetX)
-    corners.push(y / zoom + centerOffsetY)
+  mat4.translate(mvMatrix, [-1.5, 0.0, -7.0])
+  gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer)
+  gl.vertexAttribPointer(program.vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+  setMatrixUniforms()
+  gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems)
+  
+  mat4.translate(mvMatrix, [3.0, 0.0, 0.0])
+  gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer)
+  gl.vertexAttribPointer(program.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+  setMatrixUniforms()
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems)
 
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(corners), gl.STATIC_DRAW)
-  gl.vertexAttribPointer(aPlotPosition, 2, gl.FLOAT, false, 0, 0)
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-  gl.deleteBuffer(plotPositionBuffer)
 
 webGLStart()
