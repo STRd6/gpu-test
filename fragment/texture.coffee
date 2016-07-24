@@ -1,12 +1,11 @@
 module.exports = """
 precision mediump float;
-varying vec2 texCoord;
 
-float rand(vec2 co){
-  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-}
+uniform sampler2D u_image;
+
+varying vec2 v_texCoord;
 
 void main() {
-  gl_FragColor = vec4(0, 1, 0, 1);  // green
+  gl_FragColor = texture2D(u_image, v_texCoord);
 }
 """
