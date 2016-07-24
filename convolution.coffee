@@ -10,6 +10,8 @@ fragmentSource = require "./fragment/convolution"
 program = createProgram(gl, vertexSource, fragmentSource)
 gl.useProgram(program)
 
+# TODO: Instead of reading source from image, read it from data buffer
+# TODO: Output to separate buffer
 image = new Image()
 image.crossOrigin = "Anonymous"
 image.src = "https://danielx.whimsy.space/DawnLike/Objects/Wall.png?o_0"
