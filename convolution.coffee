@@ -16,9 +16,14 @@ image = new Image()
 image.crossOrigin = "Anonymous"
 image.src = "https://danielx.whimsy.space/DawnLike/Objects/Wall.png?o_0"
 image.onload = ->
-  render(image)
+  render(canvas, image)
 
-render = (image) ->
+render = (canvas, image) ->
+  # Set the resolution
+  {width, height} = canvas
+  resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+  gl.uniform2f(resolutionLocation, canvas.width, canvas.height)
+
   # Create a buffer and put a single clipspace rectangle in
   # it (2 triangles)
   buffer = gl.createBuffer()
@@ -26,17 +31,17 @@ render = (image) ->
   gl.bufferData(
     gl.ARRAY_BUFFER
     new Float32Array([
-      -1.0, -1.0
-       1.0, -1.0
-      -1.0,  1.0
-      -1.0,  1.0
-       1.0, -1.0
-       1.0,  1.0
+      0, 0
+      image.width, 0
+      0, image.height
+      0, image.height
+      image.width, 0
+      image.width, image.height
     ])
     gl.STATIC_DRAW
   )
   
-  positionLocation = gl.getAttribLocation(program, "position")
+  positionLocation = gl.getAttribLocation(program, "a_position")
   gl.enableVertexAttribArray(positionLocation)
   gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0)
 
@@ -71,6 +76,10 @@ render = (image) ->
   # Upload the image into the texture.
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   
+  # set the size of the image
+  textureSizeLocation = gl.getUniformLocation(program, "u_textureSize")
+  gl.uniform2f(textureSizeLocation, image.width, image.height)
+
   kernelLocation = gl.getUniformLocation(program, "u_kernel[0]");
   kernelWeightLocation = gl.getUniformLocation(program, "u_kernelWeight")
 
