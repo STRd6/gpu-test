@@ -106,8 +106,9 @@ configureVertices = (gl) ->
   gl.enableVertexAttribArray(texCoordLocation)
   gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0)
 
-render = (texture, kernel="identity") ->
+render = (texture, kernel="identity", outputBuffer) ->
   gl.bindTexture(gl.TEXTURE_2D, texture)
+  gl.bindFramebuffer(gl.FRAMEBUFFER, outputBuffer)
 
   # Bind our kernel params
   kernelLocation = gl.getUniformLocation(program, "u_kernel[0]")
@@ -135,21 +136,32 @@ show = (data) ->
   console.log spark histogram sampleChunk
 
 do ->
+  # Load random data then guassian blur it into an output buffer
+  # also mirror that output buffer to the canvas so we can visually follow its
+  # progress
+  # 
+  # The output buffer is then swaped to become the input buffer and the
+  # operation is repeated.
+  # Eventually we can use this to set up arbitrary pipelines to perform
+  # custom programs like fluid dynamics, heat dispersion, or any other
+  # computationals simulations.
+
   {width, height} = require "./pixie"
   data = new Uint8Array width * height * 4
   output = new Uint8Array width * height * 4
 
-  framebuffer = gl.createFramebuffer()
-  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-  framebufferTexture = loadDataAsTexture(gl, width, height, output)
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, framebufferTexture, 0)
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  outTexture = loadDataAsTexture(gl, width, height, output)
+  outBuffer = gl.createFramebuffer()
+  gl.bindFramebuffer(gl.FRAMEBUFFER, outBuffer)
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, outTexture, 0)
 
   data.forEach (v, i) ->
     data[i] = rand()
 
-  dataTexture = loadDataAsTexture(gl, width, height, data)
+  inTexture = loadDataAsTexture(gl, width, height, data)
+  inBuffer = gl.createFramebuffer()
+  gl.bindFramebuffer(gl.FRAMEBUFFER, inBuffer)
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, inTexture, 0)
 
   kernelNames = [
     "gaussianBlur"
@@ -160,12 +172,15 @@ do ->
   blur = ->
     # show data
     kernel = kernelNames[i % kernelNames.length]
-    render(dataTexture, kernel)
+    render(inTexture, kernel, outBuffer)
+    render(inTexture, kernel, null)
+    [inTexture, outTexture] = [outTexture, inTexture]
+    [inBuffer, outBuffer] = [outBuffer, inBuffer]
     #gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, output)
     #[data, output] = [output, data]
     i += 1
 
-  n = 1
+  n = 100
   console.log "x#{n}"
   console.time("blur")
   [0...n].forEach ->
