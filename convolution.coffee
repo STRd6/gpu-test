@@ -40,6 +40,8 @@ loadTexture = (gl, image) ->
   textureSizeLocation = gl.getUniformLocation(program, "u_textureSize")
   gl.uniform2f(textureSizeLocation, image.width, image.height)
 
+  return texture
+
 loadDataAsTexture = (gl, width, height, data) ->
   # Create a texture
   texture = gl.createTexture()
@@ -57,7 +59,9 @@ loadDataAsTexture = (gl, width, height, data) ->
   textureSizeLocation = gl.getUniformLocation(program, "u_textureSize")
   gl.uniform2f(textureSizeLocation, width, height)
 
-render = (canvas, image, kernel="identity") ->
+  return texture
+
+configureVertices = (gl) ->
   # Create a buffer and put a single clipspace rectangle in
   # it (2 triangles)
   # We create a buffer, fill it with six pairs of floats (two triangles)
@@ -102,6 +106,9 @@ render = (canvas, image, kernel="identity") ->
   gl.enableVertexAttribArray(texCoordLocation)
   gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0)
 
+render = (texture, kernel="identity") ->
+  gl.bindTexture(gl.TEXTURE_2D, texture)
+
   # Bind our kernel params
   kernelLocation = gl.getUniformLocation(program, "u_kernel[0]")
   kernelWeightLocation = gl.getUniformLocation(program, "u_kernelWeight")
@@ -112,10 +119,12 @@ render = (canvas, image, kernel="identity") ->
 
 {spark, histogram} = require "./util/histogram"
 
+configureVertices(gl)
+
 ->
   loadImage("https://danielx.whimsy.space/DawnLike/Objects/Wall.png?o_0").then (image) ->
-    loadTexture(gl, image)
-    render(canvas, image)
+    texture = loadTexture(gl, image)
+    render(texture)
 
 rand = ->
   Math.floor Math.random() * 256
@@ -130,18 +139,35 @@ do ->
   data = new Uint8Array width * height * 4
   output = new Uint8Array width * height * 4
 
+  framebuffer = gl.createFramebuffer()
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+  framebufferTexture = loadDataAsTexture(gl, width, height, output)
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, framebufferTexture, 0)
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
   data.forEach (v, i) ->
     data[i] = rand()
 
+  dataTexture = loadDataAsTexture(gl, width, height, data)
+
+  kernelNames = [
+    "gaussianBlur"
+    #"moveUp"
+  ]
+
+  i = 0
   blur = ->
-    show data
-    loadDataAsTexture(gl, width, height, data)
-    render(canvas, {width, height}, "gaussianBlur")
-    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, output)
-    [data, output] = [output, data]
+    # show data
+    kernel = kernelNames[i % kernelNames.length]
+    render(dataTexture, kernel)
+    #gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, output)
+    #[data, output] = [output, data]
+    i += 1
 
-  blur()
-  setInterval ->
+  n = 1
+  console.log "x#{n}"
+  console.time("blur")
+  [0...n].forEach ->
     blur()
-  , 500
-
+  console.timeEnd("blur")
