@@ -32,13 +32,13 @@
     },
     "shaders/fragment.coffee": {
       "path": "shaders/fragment.coffee",
-      "content": "module.exports = \"\"\"\n  precision mediump float;\n\n  void main(void) {\n      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n  }\n\"\"\"\n",
+      "content": "module.exports = \"\"\"\n  precision mediump float;\n\n  void main(void) {\n    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n  }\n\"\"\"\n",
       "mode": "100644",
       "type": "blob"
     },
     "shaders/vertex.coffee": {
       "path": "shaders/vertex.coffee",
-      "content": "module.exports = \"\"\"\n  attribute vec3 aVertexPosition;\n\n  uniform mat4 uMVMatrix;\n  uniform mat4 uPMatrix;\n\n  void main(void) {\n      gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\n  }\n\"\"\"\n",
+      "content": "module.exports = \"\"\"\n  attribute vec3 aVertexPosition;\n\n  uniform mat4 uMVMatrix;\n  uniform mat4 uPMatrix;\n\n  void main(void) {\n    gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\n  }\n\"\"\"\n",
       "mode": "100644",
       "type": "blob"
     },
@@ -49,7 +49,47 @@
     },
     "pixie.cson": {
       "path": "pixie.cson",
-      "content": "#entryPoint: \"example-01\"\nversion: \"0.0.1\"\n",
+      "content": "#entryPoint: \"example-01\"\nentryPoint: \"convolution\"\nversion: \"0.0.1\"\nwidth: 512\nheight: 512\n",
+      "mode": "100644"
+    },
+    "shaders/convolution.coffee": {
+      "path": "shaders/convolution.coffee",
+      "content": "module.exports = \"\"\"\nprecision mediump float;\n \n// our texture\nuniform sampler2D u_image;\nuniform vec2 u_textureSize;\nuniform float u_kernel[9];\nuniform float u_kernelWeight;\n \n// the texCoords passed in from the vertex shader.\nvarying vec2 v_texCoord;\n \nvoid main() {\n   vec2 onePixel = vec2(1.0, 1.0) / u_textureSize;\n   vec4 colorSum =\n     texture2D(u_image, v_texCoord + onePixel * vec2(-1, -1)) * u_kernel[0] +\n     texture2D(u_image, v_texCoord + onePixel * vec2( 0, -1)) * u_kernel[1] +\n     texture2D(u_image, v_texCoord + onePixel * vec2( 1, -1)) * u_kernel[2] +\n     texture2D(u_image, v_texCoord + onePixel * vec2(-1,  0)) * u_kernel[3] +\n     texture2D(u_image, v_texCoord + onePixel * vec2( 0,  0)) * u_kernel[4] +\n     texture2D(u_image, v_texCoord + onePixel * vec2( 1,  0)) * u_kernel[5] +\n     texture2D(u_image, v_texCoord + onePixel * vec2(-1,  1)) * u_kernel[6] +\n     texture2D(u_image, v_texCoord + onePixel * vec2( 0,  1)) * u_kernel[7] +\n     texture2D(u_image, v_texCoord + onePixel * vec2( 1,  1)) * u_kernel[8] ;\n \n   gl_FragColor = vec4((colorSum / u_kernelWeight).rgba);\n}\n\"\"\"\n",
+      "mode": "100644"
+    },
+    "convolution.coffee": {
+      "path": "convolution.coffee",
+      "content": "require \"./setup\"\n\ngl = canvas.getContext(\"webgl\")\n\n{createProgram} = require \"./util\"\n\nvertexSource = require \"./vertex/2d\"\nfragmentSource = require \"./fragment/texture\"\nprogram = createProgram(gl, vertexSource, fragmentSource)\ngl.useProgram(program)\n\n# Create a buffer and put a single clipspace rectangle in\n# it (2 triangles)\nbuffer = gl.createBuffer()\ngl.bindBuffer(gl.ARRAY_BUFFER, buffer)\ngl.bufferData(\n  gl.ARRAY_BUFFER\n  new Float32Array([\n      -1.0, -1.0\n       1.0, -1.0\n      -1.0,  1.0\n      -1.0,  1.0\n       1.0, -1.0\n       1.0,  1.0])\n  gl.STATIC_DRAW\n)\n\npositionLocation = gl.getAttribLocation(program, \"position\")\ngl.enableVertexAttribArray(positionLocation)\ngl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0)\n\ngl.drawArrays(gl.TRIANGLES, 0, 6)\n",
+      "mode": "100644"
+    },
+    "fragment/green.coffee": {
+      "path": "fragment/green.coffee",
+      "content": "module.exports = \"\"\"\nprecision mediump float;\n\nvoid main() {\n  gl_FragColor = vec4(0, 1, 0, 1);  // green\n}\n\"\"\"\n",
+      "mode": "100644"
+    },
+    "style.styl": {
+      "path": "style.styl",
+      "content": "html\n  height: 100%\n\nbody\n  height: 100%\n  margin: 0\n  overflow: hidden\n",
+      "mode": "100644"
+    },
+    "setup.coffee": {
+      "path": "setup.coffee",
+      "content": "styleNode = document.createElement(\"style\")\nstyleNode.innerHTML = require \"./style\"\n\ndocument.head.appendChild(styleNode)\n\n{width, height} = require \"./pixie\"\n\ncanvas = document.createElement(\"canvas\")\ncanvas.width = width\ncanvas.height = height\ndocument.body.appendChild canvas\n\nglobal.canvas = canvas\n",
+      "mode": "100644"
+    },
+    "vertex/2d.coffee": {
+      "path": "vertex/2d.coffee",
+      "content": "module.exports = \"\"\"\n  precision mediump float;\n  attribute vec2 position;\n\n  attribute vec2 a_texCoord;\n  varying vec2 v_texCoord;\n\n  void main(void) {\n    gl_Position = vec4(position, 0, 1);\n    v_texCoord = a_texCoord;\n  }\n\"\"\"\n",
+      "mode": "100644"
+    },
+    "util.coffee": {
+      "path": "util.coffee",
+      "content": "compileShader = (gl, source, type) ->\n  shader = gl.createShader(type)\n\n  gl.shaderSource(shader, source)\n  gl.compileShader(shader)\n\n  if !gl.getShaderParameter(shader, gl.COMPILE_STATUS)\n    throw new Error gl.getShaderInfoLog(shader)\n\n  return shader\n\ncreateProgram = (gl, vertexSource, fragmentSource) ->\n  vertexShader = compileShader(gl, vertexSource, gl.VERTEX_SHADER)\n  fragmentShader = compileShader(gl, fragmentSource, gl.FRAGMENT_SHADER)\n\n  shaderProgram = gl.createProgram()\n  gl.attachShader(shaderProgram, vertexShader)\n  gl.attachShader(shaderProgram, fragmentShader)\n  gl.linkProgram(shaderProgram)\n\n  if !gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)\n    throw new Error \"Could not initialise shaders\"\n\n  gl.useProgram(shaderProgram)\n\n  return shaderProgram\n  \n\nmodule.exports =\n  createProgram: createProgram\n\n",
+      "mode": "100644"
+    },
+    "fragment/texture.coffee": {
+      "path": "fragment/texture.coffee",
+      "content": "module.exports = \"\"\"\nprecision mediump float;\nvarying vec2 texCoord;\n\nfloat rand(vec2 co){\n  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);\n}\n\nvoid main() {\n  gl_FragColor = vec4(0, 1, 0, 1);  // green\n}\n\"\"\"\n",
       "mode": "100644"
     }
   },
@@ -71,12 +111,12 @@
     },
     "shaders/fragment": {
       "path": "shaders/fragment",
-      "content": "(function() {\n  module.exports = \"precision mediump float;\\n\\nvoid main(void) {\\n    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\\n}\";\n\n}).call(this);\n",
+      "content": "(function() {\n  module.exports = \"precision mediump float;\\n\\nvoid main(void) {\\n  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\\n}\";\n\n}).call(this);\n",
       "type": "blob"
     },
     "shaders/vertex": {
       "path": "shaders/vertex",
-      "content": "(function() {\n  module.exports = \"attribute vec3 aVertexPosition;\\n\\nuniform mat4 uMVMatrix;\\nuniform mat4 uPMatrix;\\n\\nvoid main(void) {\\n    gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\\n}\";\n\n}).call(this);\n",
+      "content": "(function() {\n  module.exports = \"attribute vec3 aVertexPosition;\\n\\nuniform mat4 uMVMatrix;\\nuniform mat4 uPMatrix;\\n\\nvoid main(void) {\\n  gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);\\n}\";\n\n}).call(this);\n",
       "type": "blob"
     },
     "example-01": {
@@ -86,7 +126,47 @@
     },
     "pixie": {
       "path": "pixie",
-      "content": "module.exports = {\"version\":\"0.0.1\"};",
+      "content": "module.exports = {\"entryPoint\":\"convolution\",\"version\":\"0.0.1\",\"width\":512,\"height\":512};",
+      "type": "blob"
+    },
+    "shaders/convolution": {
+      "path": "shaders/convolution",
+      "content": "(function() {\n  module.exports = \"precision mediump float;\\n \\n// our texture\\nuniform sampler2D u_image;\\nuniform vec2 u_textureSize;\\nuniform float u_kernel[9];\\nuniform float u_kernelWeight;\\n \\n// the texCoords passed in from the vertex shader.\\nvarying vec2 v_texCoord;\\n \\nvoid main() {\\n   vec2 onePixel = vec2(1.0, 1.0) / u_textureSize;\\n   vec4 colorSum =\\n     texture2D(u_image, v_texCoord + onePixel * vec2(-1, -1)) * u_kernel[0] +\\n     texture2D(u_image, v_texCoord + onePixel * vec2( 0, -1)) * u_kernel[1] +\\n     texture2D(u_image, v_texCoord + onePixel * vec2( 1, -1)) * u_kernel[2] +\\n     texture2D(u_image, v_texCoord + onePixel * vec2(-1,  0)) * u_kernel[3] +\\n     texture2D(u_image, v_texCoord + onePixel * vec2( 0,  0)) * u_kernel[4] +\\n     texture2D(u_image, v_texCoord + onePixel * vec2( 1,  0)) * u_kernel[5] +\\n     texture2D(u_image, v_texCoord + onePixel * vec2(-1,  1)) * u_kernel[6] +\\n     texture2D(u_image, v_texCoord + onePixel * vec2( 0,  1)) * u_kernel[7] +\\n     texture2D(u_image, v_texCoord + onePixel * vec2( 1,  1)) * u_kernel[8] ;\\n \\n   gl_FragColor = vec4((colorSum / u_kernelWeight).rgba);\\n}\";\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "convolution": {
+      "path": "convolution",
+      "content": "(function() {\n  var buffer, createProgram, fragmentSource, gl, positionLocation, program, vertexSource;\n\n  require(\"./setup\");\n\n  gl = canvas.getContext(\"webgl\");\n\n  createProgram = require(\"./util\").createProgram;\n\n  vertexSource = require(\"./vertex/2d\");\n\n  fragmentSource = require(\"./fragment/texture\");\n\n  program = createProgram(gl, vertexSource, fragmentSource);\n\n  gl.useProgram(program);\n\n  buffer = gl.createBuffer();\n\n  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);\n\n  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0]), gl.STATIC_DRAW);\n\n  positionLocation = gl.getAttribLocation(program, \"position\");\n\n  gl.enableVertexAttribArray(positionLocation);\n\n  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);\n\n  gl.drawArrays(gl.TRIANGLES, 0, 6);\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "fragment/green": {
+      "path": "fragment/green",
+      "content": "(function() {\n  module.exports = \"precision mediump float;\\n\\nvoid main() {\\n  gl_FragColor = vec4(0, 1, 0, 1);  // green\\n}\";\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "style": {
+      "path": "style",
+      "content": "module.exports = \"html {\\n  height: 100%;\\n}\\nbody {\\n  height: 100%;\\n  margin: 0;\\n  overflow: hidden;\\n}\\n\";",
+      "type": "blob"
+    },
+    "setup": {
+      "path": "setup",
+      "content": "(function() {\n  var canvas, height, styleNode, width, _ref;\n\n  styleNode = document.createElement(\"style\");\n\n  styleNode.innerHTML = require(\"./style\");\n\n  document.head.appendChild(styleNode);\n\n  _ref = require(\"./pixie\"), width = _ref.width, height = _ref.height;\n\n  canvas = document.createElement(\"canvas\");\n\n  canvas.width = width;\n\n  canvas.height = height;\n\n  document.body.appendChild(canvas);\n\n  global.canvas = canvas;\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "vertex/2d": {
+      "path": "vertex/2d",
+      "content": "(function() {\n  module.exports = \"precision mediump float;\\nattribute vec2 position;\\n\\nattribute vec2 a_texCoord;\\nvarying vec2 v_texCoord;\\n\\nvoid main(void) {\\n  gl_Position = vec4(position, 0, 1);\\n  v_texCoord = a_texCoord;\\n}\";\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "util": {
+      "path": "util",
+      "content": "(function() {\n  var compileShader, createProgram;\n\n  compileShader = function(gl, source, type) {\n    var shader;\n    shader = gl.createShader(type);\n    gl.shaderSource(shader, source);\n    gl.compileShader(shader);\n    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {\n      throw new Error(gl.getShaderInfoLog(shader));\n    }\n    return shader;\n  };\n\n  createProgram = function(gl, vertexSource, fragmentSource) {\n    var fragmentShader, shaderProgram, vertexShader;\n    vertexShader = compileShader(gl, vertexSource, gl.VERTEX_SHADER);\n    fragmentShader = compileShader(gl, fragmentSource, gl.FRAGMENT_SHADER);\n    shaderProgram = gl.createProgram();\n    gl.attachShader(shaderProgram, vertexShader);\n    gl.attachShader(shaderProgram, fragmentShader);\n    gl.linkProgram(shaderProgram);\n    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {\n      throw new Error(\"Could not initialise shaders\");\n    }\n    gl.useProgram(shaderProgram);\n    return shaderProgram;\n  };\n\n  module.exports = {\n    createProgram: createProgram\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "fragment/texture": {
+      "path": "fragment/texture",
+      "content": "(function() {\n  module.exports = \"precision mediump float;\\nvarying vec2 texCoord;\\n\\nfloat rand(vec2 co){\\n  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);\\n}\\n\\nvoid main() {\\n  gl_FragColor = vec4(0, 1, 0, 1);  // green\\n}\";\n\n}).call(this);\n",
       "type": "blob"
     }
   },
@@ -94,7 +174,7 @@
     "url": "https://danielx.net/editor/"
   },
   "version": "0.0.1",
-  "entryPoint": "main",
+  "entryPoint": "convolution",
   "repository": {
     "branch": "master",
     "default_branch": "master",
