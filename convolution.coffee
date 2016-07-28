@@ -10,8 +10,6 @@ fragmentSource = require "./fragment/convolution"
 program = createProgram(gl, vertexSource, fragmentSource)
 gl.useProgram(program)
 
-# TODO: Instead of reading source from image, read it from data buffer
-# TODO: Output to separate buffer
 loadImage = (url) ->
   new Promise (resolve, reject) ->
     image = new Image()
@@ -139,7 +137,7 @@ do ->
   # Load random data then guassian blur it into an output buffer
   # also mirror that output buffer to the canvas so we can visually follow its
   # progress
-  # 
+  #
   # The output buffer is then swaped to become the input buffer and the
   # operation is repeated.
   # Eventually we can use this to set up arbitrary pipelines to perform
@@ -180,9 +178,11 @@ do ->
     #[data, output] = [output, data]
     i += 1
 
-  n = 100
-  console.log "x#{n}"
-  console.time("blur")
-  [0...n].forEach ->
-    blur()
-  console.timeEnd("blur")
+  setInterval ->
+    n = 1
+    console.log "x#{n}"
+    console.time("blur")
+    [0...n].forEach ->
+      blur()
+    console.timeEnd("blur")
+  , 100

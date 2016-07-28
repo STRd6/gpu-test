@@ -24,7 +24,7 @@ createProgram = (gl, vertexSource, fragmentSource) ->
   gl.useProgram(shaderProgram)
 
   return shaderProgram
-  
+
 
 module.exports =
   createProgram: createProgram
